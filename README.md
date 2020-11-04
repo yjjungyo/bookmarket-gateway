@@ -268,7 +268,7 @@ Delivery 서비스에는 H2 DB 대신 HSQL DB를 사용하기로 하였다. 이�
 
 ![image](https://user-images.githubusercontent.com/20619166/98075210-4f17c500-1eaf-11eb-92d1-3d3731bc4e0c.png)
 
-![image](https://user-images.githubusercontent.com/20619166/98075204-4c1cd480-1eaf-11eb-915f-9f3bce99e834.png)
+![image](https://user-images.githubusercontent.com/70673830/98119038-68406600-1eef-11eb-803e-a234638ac717.png)
 
 
 ## 동기식 호출 과 Fallback 처리
