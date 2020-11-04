@@ -612,3 +612,72 @@ Concurrency:		       96.02
 ```
 
 배포기간 동안 Availability 가 변화없기 때문에 무정지 재배포가 성공한 것으로 확인됨.
+
+## Liveness Probe 점검
+### 설정 확인
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    test: orderLiveness
+  name: order
+  namespace: books
+spec:
+  containers:
+  - name: order
+    image: admin03.azurecr.io/order:V1
+    args:
+    - /bin/sh
+    - -c
+    - touch /tmp/healthy; sleep 30; rm -rf /tmp/healthy; sleep 600
+    livenessProbe:
+      exec:
+        command:
+        - cat
+        - /tmp/healthy
+      initialDelaySeconds: 5
+      periodSeconds: 5
+```
+#### 기존 서비스 삭제
+```
+kubectl delete service order -n books
+service "order" deleted
+```
+
+#### 기존 deploy 삭제
+```
+kubectl delete deploy order -n books
+deployment.apps "order" deleted
+```
+
+#### liveness 적용된 pod 생성
+```
+kubectl apply -f pod-exec-liveness.yaml
+```
+
+#### liveness 적용된 order pod 의 상태 체크( 테스트 결과 )
+```
+kubectl describe po order -n books
+```
+
+#### 5. 실습 결과
+```
+(pwd 로 현 위치가 /container-orchestration/yaml/liveness/ 인지 확인)
+(Liveness Command Probe 실습)
+kubectl create -f exec-liveness.yaml
+(컨테이너가 Running 상태로 보이나, Liveness Probe 실패로 계속 재시작)
+(kubectl describe로 실패 메시지 확인)
+kubectl describe po liveness-exec
+(Liveness HTTP Probe 실습)
+kubectl create -f http-liveness.yaml
+(kubectl describe로 실패 메시지 확인)
+kubectl describe po liveness-http
+(Liveness 와 readiness probe 동시 적용 실습)
+kubectl create -f tcp-liveness-readiness.yaml
+(8080포트에 대해 정상적으로 Liveness 와 readiness Probe를 통과해 서비스가 실행됨)
+kubectl describe po goproxy
+```
+![image](https://user-images.githubusercontent.com/70673830/98134412-148b4800-1f02-11eb-9189-f38c401c0eb8.png)
+
+
