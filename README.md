@@ -427,13 +427,12 @@ public class PolicyHandler{
 #주문처리
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Success
 ```
-![image](https://user-images.githubusercontent.com/20619166/98076314-60fa6780-1eb1-11eb-9ff8-24d8d6b68bf4.png)
-
+![image](https://user-images.githubusercontent.com/70673830/98119447-f7e61480-1eef-11eb-958b-4faf1dee47b1.png)
 ```
 #주문상태 확인
 http localhost:8081/orders     # 주문상태 안바뀜 확인
 ```
-![image](https://user-images.githubusercontent.com/20619166/98076319-648dee80-1eb1-11eb-9338-8655f18ef070.png)
+![image](https://user-images.githubusercontent.com/70673830/98119540-121ff280-1ef0-11eb-93fc-5982582757c2.png)
 
 ```
 #배송 서비스 기동
@@ -443,21 +442,21 @@ mvn spring-boot:run
 #주문상태 확인
 http localhost:8081/orders     # 주문의 상태가 "shipped"으로 확인
 ```
-![image](https://user-images.githubusercontent.com/20619166/98076539-c5b5c200-1eb1-11eb-90ce-1e15a4ab2b84.png)
+![image](https://user-images.githubusercontent.com/70673830/98119616-3380de80-1ef0-11eb-8760-64d746230321.png)
 
 ## CQRS
 customerview(mypage)를 통해 구현하였다.
 
-![image](https://user-images.githubusercontent.com/20619166/98079400-0b28be00-1eb7-11eb-995f-4b108765424b.png)
+![image](https://user-images.githubusercontent.com/70673830/98119678-48f60880-1ef0-11eb-955e-a99ef278f2d3.png)
 
 
 
 ## gateway
 gateway 프로젝트 내 application.yml
 
-![image](https://user-images.githubusercontent.com/20619166/98079416-11b73580-1eb7-11eb-9bf8-26415996f5cd.png)
+![image](https://user-images.githubusercontent.com/70673830/98119760-65924080-1ef0-11eb-8c21-078c5811c4e0.png)
 
-![image](https://user-images.githubusercontent.com/20619166/98079409-0e23ae80-1eb7-11eb-8d26-99b942adafd6.png)
+![image](https://user-images.githubusercontent.com/70673830/98119815-7a6ed400-1ef0-11eb-9576-028614349553.png)
 
 # 운영
 
