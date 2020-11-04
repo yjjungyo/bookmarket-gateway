@@ -1,4 +1,4 @@
-# bookmarket-gateway# Book Market
+# Book Market
 
 - 체크포인트 : https://workflowy.com/s/assessment-check-po/T5YrzcMewfo4J6LW
 
@@ -330,7 +330,7 @@ public interface PaymentService {
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Fail
 
 ```
-![image](https://user-images.githubusercontent.com/20619166/98075791-5c817f00-1eb0-11eb-9b8f-863c432ed1ba.png)
+![image](https://user-images.githubusercontent.com/70673830/98119212-a89fe400-1eef-11eb-8b8e-196a219b0f38.png)
 
 ```
 #결제서비스 재기동
@@ -342,7 +342,7 @@ http localhost:8081/orders bookId=1 qty=1 customerId=1001   #Success
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Success
 ```
 
-![image](https://user-images.githubusercontent.com/20619166/98075797-60ad9c80-1eb0-11eb-9808-ac0d8629677a.png)
+![image](https://user-images.githubusercontent.com/70673830/98119273-bce3e100-1eef-11eb-9095-5ab722c00185.png)
 
 - 또한 과도한 요청시에 서비스 장애가 도미노 처럼 벌어질 수 있다. (서킷브레이커, 폴백 처리는 운영단계에서 설명한다.)
 
