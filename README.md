@@ -485,6 +485,7 @@ CircuitBeaker 발생
 ```
 
 ![image](https://user-images.githubusercontent.com/70673830/98113539-28758080-1ee7-11eb-8b34-dab272e9f122.png)
+# 소스 코드
 ```
 # PaymentController.java
  @GetMapping("/selectPaymentInfo")
@@ -513,7 +514,7 @@ CircuitBeaker 발생
   return "CircuitBreaker!!!";
  }
 ```
-
+# 실행 결과
 ![image](https://user-images.githubusercontent.com/70673830/98113470-0e3ba280-1ee7-11eb-8830-7c82b27ce0ba.png)
 
 * 결제가 이루어 지지 않은 비정상적인 호출에 대한 CD:
