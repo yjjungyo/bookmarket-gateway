@@ -467,13 +467,24 @@ gateway 프로젝트 내 application.yml
 각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 GCP를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
 
 
-## 동기식 호출 / 서킷 브레이킹 / 장애격리
-
-* 서킷 브레이킹 프레임워크의 선택: Hystrix 옵션을 사용하여 Source로 구현함
+## Circuit Breaker 점검
 
 시나리오는 주문(Order)-->결제(Payment) 시의 연결을 RESTful Request/Response 로 연동하여 구현이 되어있고, 결제 요청에 orderId가 미존재 시 "circuitBreaker.requestVolumeThreshold"의 옵션을 통한 n개 이상 결제 요청 시 CB 를 통하여 장애격리.
 
-- Hystrix 를 설정:  orderId 없을 시 10동안 CB 격리 및 requestVolumeThreshold 옵션으로 인한 1건 이상 부터 설정
+```
+Hystrix Command
+	5000ms 이상 Timeout 발생 시 CircuitBearker 발동
+
+CircuitBeaker 발생
+	http http://localhost:8080/selectPaymentInfo?orderId=0
+		- 잘못된 쿼리 수행 시 CircuitBeaker
+		- 10000ms(10sec) Sleep 수행
+		- 5000ms Timeout으로 CircuitBeaker 발동
+		- 10000ms(10sec) 
+    - 1건 이상 발생 시 발동
+```
+
+![image](https://user-images.githubusercontent.com/70673830/98113539-28758080-1ee7-11eb-8b34-dab272e9f122.png)
 ```
 # PaymentController.java
  @GetMapping("/selectPaymentInfo")
@@ -494,6 +505,7 @@ gateway 프로젝트 내 application.yml
  }
   
 ```
+![image](https://user-images.githubusercontent.com/70673830/98113341-ddf40400-1ee6-11eb-8d24-7517b4494d10.png)
 
 - 피호출 서비스(결제:Payment) 의 timeoutInMilliseconds의 5초 이후는 아래의 CD에 격리 처리
 ```
@@ -502,9 +514,13 @@ gateway 프로젝트 내 application.yml
  }
 ```
 
+![image](https://user-images.githubusercontent.com/70673830/98113470-0e3ba280-1ee7-11eb-8830-7c82b27ce0ba.png)
+
 * 결제가 이루어 지지 않은 비정상적인 호출에 대한 CD:
 - 10초 동안 격리 실시
 - 1번 이상 orderId없을 시 격리
+
+
 
 - 운영시스템은 비정상적인 접속 및 과도한 Data 조회에 대한 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 
 
