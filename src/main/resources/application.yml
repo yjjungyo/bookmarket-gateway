@@ -66,7 +66,7 @@ spring:
         - id: bookalarm
           uri: http://bookalarm:8080
           predicates:
-            - Path=/bookalarm/**             
+            - Path=/bookalarms/**             
       globalcors:
         corsConfigurations:
           '[/**]':
