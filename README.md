@@ -809,8 +809,125 @@ kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootst
 
 ## 책 주문 생성
 ```
+http POST http://gateway:8080/orders bookId=1000 qty=10 customerId=145
 
+HTTP/1.1 201
+Content-Type: application/json;charset=UTF-8
+Date: Thu, 05 Nov 2020 02:44:17 GMT
+Location: http://localhost:8081/orders/1
+Transfer-Encoding: chunked
+{
+    "_links": {
+        "order": {
+            "href": "http://Order:8080/orders/1"
+        },
+        "self": {
+            "href": "http://Order:8080/orders/1"
+        }
+    },
+    "bookId": 1000,
+    "customerId": 145,
+    "qty": 10,
+    "status": null
+```
+
+## 결재 상태 확인
+```
+http http://gateway:8080/payments/1
+
+HTTP/1.1 200
+Content-Type: application/hal+json;charset=UTF-8
+Date: Thu, 05 Nov 2020 03:54:51 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "payment": {
+            "href": "http://localhost:8082/payments/1"
+        },
+        "self": {
+            "href": "http://localhost:8082/payments/1"
+        }
+    },
+    "customerId": 145,
+    "orderId": 1,
+    "paymentStatus": null,
+    "status": "Ordered"
+```
+
+## 배송 상태 확인
+```
+http http://gateway:8080/deliveries/1
+
+HTTP/1.1 200
+Content-Type: application/hal+json;charset=UTF-8
+Date: Thu, 05 Nov 2020 03:57:07 GMT
+Transfer-Encoding: chunked
+
+{
+    "_links": {
+        "delivery": {
+            "href": "http://localhost:8083/deliveries/1"
+        },
+        "self": {
+            "href": "http://localhost:8083/deliveries/1"
+        }
+    },
+    "customerId": 145,
+    "orderId": 1,
+    "status": "Shipped"
 ```
 
 ## 배송 상태 Book Message 확인
+```
+{"eventType":"MessageSended","timestamp":"20201105114418","id":null,"deliveryId":1,"bookMessage":"Book Delivery Status Changed : Shipped","deliveryStatus":"Shipped","me":true}
 
+```
+## Circuit Breaker 점검
+```
+Hystrix Command
+	5000ms 이상 Timeout 발생 시 CircuitBearker 발동
+
+CircuitBeaker 발생
+	http http://bookAlarm:8080/selectBookAlarmInfo?id=0
+		- 잘못된 쿼리 수행 시 CircuitBeaker
+		- 10000ms(10sec) Sleep 수행
+		- 5000ms Timeout으로 CircuitBeaker 발동
+		- 10000ms(10sec) 
+```
+### 실행 결과
+```
+HTTP/1.1 200
+Content-Length: 17
+Content-Type: text/plain;charset=UTF-8
+Date: Thu, 05 Nov 2020 04:22:29 GMT
+
+CircuitBreaker!!!
+```
+### 소스코드
+```
+  @GetMapping("/selectBookAlarmInfo")
+  @HystrixCommand(fallbackMethod = "fallback", commandProperties = {
+          @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "5000"),
+          @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000")
+  })
+  public String selectBookAlarmInfo(@RequestParam long id) throws InterruptedException {
+
+   if (id <= 0) {
+    System.out.println("@@@ CircuitBreaker!!!");
+    Thread.sleep(10000);
+    //throw new RuntimeException("CircuitBreaker!!!");
+   } else {
+    Optional<BookAlarm> bookAlarm = bookAlarmRepository.findById(id);
+    return bookAlarm.get().getBookMessage();
+   }
+
+   System.out.println("$$$ SUCCESS!!!");
+   return " SUCCESS!!!";
+  }
+
+  private String fallback(long id) {
+   System.out.println("### fallback!!!");
+   return "CircuitBreaker!!!";
+  }
+```
