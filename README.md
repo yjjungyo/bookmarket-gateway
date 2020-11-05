@@ -808,83 +808,21 @@ kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootst
 ```
 
 ## 책 주문 생성
-```
-http POST http://gateway:8080/orders bookId=1000 qty=10 customerId=145
-
-HTTP/1.1 201
-Content-Type: application/json;charset=UTF-8
-Date: Thu, 05 Nov 2020 02:44:17 GMT
-Location: http://localhost:8081/orders/1
-Transfer-Encoding: chunked
-{
-    "_links": {
-        "order": {
-            "href": "http://Order:8080/orders/1"
-        },
-        "self": {
-            "href": "http://Order:8080/orders/1"
-        }
-    },
-    "bookId": 1000,
-    "customerId": 145,
-    "qty": 10,
-    "status": null
-```
+![image](https://user-images.githubusercontent.com/70673830/98305636-9a43ec00-2005-11eb-8af2-9061a422f24b.png)
 
 ## 결재 상태 확인
-```
-http http://gateway:8080/payments/1
-
-HTTP/1.1 200
-Content-Type: application/hal+json;charset=UTF-8
-Date: Thu, 05 Nov 2020 03:54:51 GMT
-Transfer-Encoding: chunked
-
-{
-    "_links": {
-        "payment": {
-            "href": "http://localhost:8082/payments/1"
-        },
-        "self": {
-            "href": "http://localhost:8082/payments/1"
-        }
-    },
-    "customerId": 145,
-    "orderId": 1,
-    "paymentStatus": null,
-    "status": "Ordered"
-```
+![image](https://user-images.githubusercontent.com/70673830/98305714-c0698c00-2005-11eb-82c4-7a744b9fd96b.png)
 
 ## 배송 상태 확인
-```
-http http://gateway:8080/deliveries/1
+![image](https://user-images.githubusercontent.com/70673830/98305776-db3c0080-2005-11eb-9675-871d7960faa8.png)
 
-HTTP/1.1 200
-Content-Type: application/hal+json;charset=UTF-8
-Date: Thu, 05 Nov 2020 03:57:07 GMT
-Transfer-Encoding: chunked
-
-{
-    "_links": {
-        "delivery": {
-            "href": "http://localhost:8083/deliveries/1"
-        },
-        "self": {
-            "href": "http://localhost:8083/deliveries/1"
-        }
-    },
-    "customerId": 145,
-    "orderId": 1,
-    "status": "Shipped"
-```
 ## CI/CD 점검
 ![image](https://user-images.githubusercontent.com/70673830/98233337-405e0a80-1fa2-11eb-977b-577920b03a21.png)
 ![image](https://user-images.githubusercontent.com/70673830/98233383-51a71700-1fa2-11eb-9af9-630338761118.png)
 
-## 배송 상태 Book Message 확인
-```
-{"eventType":"MessageSended","timestamp":"20201105114418","id":null,"deliveryId":1,"bookMessage":"Book Delivery Status Changed : Shipped","deliveryStatus":"Shipped","me":true}
-```
+## 배송 상태 Book Message 확인 Monitoring
+![image](https://user-images.githubusercontent.com/70673830/98305857-fad32900-2005-11eb-96b8-42b33f33ecb5.png)
+
 
 ## Circuit Breaker 점검
 ```
