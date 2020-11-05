@@ -19,11 +19,15 @@ spring:
         - id: Delivery
           uri: http://localhost:8083
           predicates:
-            - Path=/deliveries/** 
+            - Path=/deliveries/**
         - id: customerview
           uri: http://localhost:8084
           predicates:
-            - Path= /mypages/**
+            - Path=/mypages/**
+        - id: bookalarm
+            uri: http://localhost:8086
+            predicates:
+              - Path=/bookalarms/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -43,22 +47,26 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: Order
-          uri: http://Order:8080
+        - id: order
+          uri: http://order:8080
           predicates:
             - Path=/orders/** 
-        - id: Payment
-          uri: http://Payment:8080
+        - id: payment
+          uri: http://payment:8080
           predicates:
             - Path=/payments/** 
-        - id: Delivery
-          uri: http://Delivery:8080
+        - id: delivery
+          uri: http://delivery:8080
           predicates:
             - Path=/deliveries/** 
         - id: customerview
           uri: http://customerview:8080
           predicates:
-            - Path= /mypages/**
+            - Path=/mypages/**
+        - id: bookalarm
+          uri: http://bookalarm:8080
+          predicates:
+            - Path=/bookalarm/**             
       globalcors:
         corsConfigurations:
           '[/**]':
