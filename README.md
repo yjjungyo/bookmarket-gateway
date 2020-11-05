@@ -11,16 +11,18 @@
   - [분석/설계](#분석설계)
   - [구현:](#구현-)
     - [DDD 의 적용](#ddd-의-적용)
-    - [폴리글랏 퍼시스턴스](#폴리글랏-퍼시스턴스)
-    - [폴리글랏 프로그래밍](#폴리글랏-프로그래밍)
+    - [폴리글랏](#폴리글랏)
     - [동기식 호출 과 Fallback 처리](#동기식-호출-과-Fallback-처리)
     - [비동기식 호출 과 Eventual Consistency](#비동기식-호출-과-Eventual-Consistency)
+    - [CQRS](#CQRS)
+    - [gateway](#gateway)
   - [운영](#운영)
     - [CI/CD 설정](#cicd설정)
     - [동기식 호출 / 서킷 브레이킹 / 장애격리](#동기식-호출-서킷-브레이킹-장애격리)
     - [오토스케일 아웃](#오토스케일-아웃)
     - [무정지 재배포](#무정지-재배포)
-  - [신규 개발 조직의 추가](#신규-개발-조직의-추가)
+    - [Liveness](#Liveness)
+    - [Config Map](#Config-Map)
 
 # 서비스 시나리오
 
@@ -31,18 +33,17 @@
 1. 결제완료되면 주문 상태를 변경한다 ( Pub / Sub Event Dirven )
 1. 배송이 시작되면 주문 상태를 변경한다 ( Pub / Sub Event Dirven )
 1. 고객은 주문을 취소한다.
-1. 주문이 취소되면 결제를 취소하여 고객에게 환불한다. ( Pub / Sub Event Dirven )
+1. 주문이 취소되면 결제를 취소한다. ( Pub / Sub Event Dirven )
 1. 결제가 취소되면 배송을 취소한다. ( Pub / Sub Event Dirven )
-1. 결제, 주문이 취소되면 주문상태를 변경한다. ( Pub / Sub Event Dirven )
 
 비기능적 요구사항
 1. 트랜잭션
     1. 결제가 되지 않은 주문건은 아예 거래가 성립되지 않아야 한다  Sync 호출 
 1. 장애격리
     1. 배송 기능이 수행되지 않더라도 주문은 365일 24시간 받을 수 있어야 한다  Async (event-driven), Eventual Consistency
-    1. 결제시스템이 과중되면 사용자를 잠시동안 받지 않고 결제를 잠시후에 하도록 유도한다  Circuit breaker, fallback
+    1. 주문시스템이 과중되면 사용자를 잠시동안 받지 않고 주문를 잠시 후에 하도록 유도한다  Circuit Breaker, fallback
 1. 성능
-    1. 고객이 주문상태를 시스템에서 확인할 수 있어야 한다  CQRS
+    1. 고객이 주문 상태를 시스템에서 확인할 수 있어야 한다  CQRS
 
 
 # 체크포인트
@@ -113,22 +114,23 @@
 ![image](https://user-images.githubusercontent.com/20619166/98074092-0c54ed80-1ead-11eb-8801-cea6c8e76cf7.png)
 
     - 도메인 서열 분리 
-        - Core Domain:  Order : 없어서는 안될 핵심 서비스이며, 연견 Up-time SLA 수준을 99.999% 목표, 배포주기는 Order 의 경우 1주일 1회 미만
-        - Supporting Domain:   Delivery : 경쟁력을 내기위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함.
-        - General Domain:   Payment : 결제서비스로 3rd Party 외부 서비스를 사용하는 것이 경쟁력이 높음 (핑크색으로 이후 전환할 예정)
+        - Core Domain:  Order : bookmarket 핵심 서비스이며, 연간 Up-time SLA 수준을 99.999% 목표, 배포 주기는 Order 의 경우 1주일 1회 미만
+        - Supporting Domain:   Delivery : 경쟁력을 내기 위한 서비스이며, SLA 수준은 연간 60% 이상 uptime 목표, 배포주기는 각 팀의 자율이나 표준 스프린트 주기가 1주일 이므로 1주일 1회 이상을 기준으로 함.
+        - General Domain:   Payment : 결제서비스로 3rd Party 외부 서비스를 사용하는 것이 경쟁력이 높음
 
 ## 헥사고날 아키텍처 다이어그램 도출
     
 ![image](https://user-images.githubusercontent.com/20619166/98073892-acf6dd80-1eac-11eb-99ec-0a7521d96aca.PNG)
 
-    - Chris Richardson, MSA Patterns 참고하여 Inbound adaptor와 Outbound adaptor를 구분함
-    - 호출관계에서 PubSub 과 Req/Resp 를 구분함
-    - 서브 도메인과 바운디드 컨텍스트의 분리:  각 팀의 KPI 별로 아래와 같이 관심 구현 스토리를 나눠가짐
+    - 이벤트 흐름에서 Inbound adaptor와 Outbound adaptor를 구분함
+    - 호출 관계에서 Pub/Sub 과 Req/Resp 를 구분함
+    - 바운디드 컨텍스트에 서브 도메인을 1 대 1 모델링하고 팀원별 관심 구현 스토리를 나눠가짐
 
 
 # 구현:
 
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 BC별로 대변되는 마이크로 서비스들을 스프링부트로 구현하였다. 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다 (각자의 포트넘버는 8081 ~ 808n 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 각 Bounded Context 별로 대변되는 마이크로 서비스들을 Spring Boot 로 구현하였다. 
+구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다. (포트 넘버는 8081 ~ 8084 이다)
 
 ```
 cd Order
@@ -146,14 +148,10 @@ mvn spring-boot:run
 
 ## DDD 의 적용
 
-- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다: (예시는 Order 마이크로 서비스). 이때 가능한 현업에서 사용하는 언어 (유비쿼터스 랭귀지)를 그대로 영문으로 하여 사용하려고 노력했다.
+- 각 서비스내에 도출된 핵심 Aggregate Root 객체를 Entity 로 선언하였다: (예시는 Order 마이크로 서비스)
 
 ```
 package bookmarket;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-import java.util.List;
 
 @Entity
 @Table(name="Order_table")
@@ -184,8 +182,6 @@ public class Order {
         // mappings goes here
         OrderApplication.applicationContext.getBean(bookmarket.external.PaymentService.class)
             .payReq(payment);
-
-
     }
 
     @PreRemove
@@ -196,39 +192,12 @@ public class Order {
         orderCanceled.publishAfterCommit();
     }
 
-
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-    public Long getBookId() {
-        return bookId;
-    }
-
-    public void setBookId(Long bookId) {
-        this.bookId = bookId;
-    }
-    public Long getQty() {
-        return qty;
-    }
-
-    public void setQty(Long qty) {
-        this.qty = qty;
-    }
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    public Long getCustomerId() {
-        return customerId;
-    }
-
+    // getter(), setter() 중략
+    
     public void setCustomerId(Long customerId) {
         this.customerId = customerId;
     }
@@ -236,7 +205,8 @@ public class Order {
 
 
 ```
-- Entity Pattern 과 Repository Pattern 을 적용하여 JPA 를 통하여 다양한 데이터소스 유형 (RDB or NoSQL) 에 대한 별도의 처리가 없도록 데이터 접근 어댑터를 자동 생성하기 위하여 Spring Data REST 의 RestRepository 를 적용하였다
+- Entity / Repository Pattern을 적용하여 JPA를 통하여 다양한 데이터소스 유형 (이 과제에서는 H2, HSQLDB) 에 대한 데이터 접근 어댑터를 자동 생성하기 위하여 
+Spring Data REST의 RestRepository 를 적용
 ```
 package bookmarket;
 
@@ -262,7 +232,7 @@ http localhost:8081/orders/1
 
 ## 폴리글랏 퍼시스턴스
 
-Delivery 서비스에는 H2 DB 대신 HSQL DB를 사용하기로 하였다. 이를 위해 메이븐 설정(pom.xml)상 DB 정보를 HSQLDB를 사용하도록 변경하였다.
+Delivery 서비스에는 H2 DB 대신 HSQLDB를 사용하기로 하였다. 이를 위해 메이븐 설정(pom.xml)상 DB 정보를 HSQLDB를 사용하도록 변경하였다.
 
 ![image](https://user-images.githubusercontent.com/20619166/98075211-4fb05b80-1eaf-11eb-9219-d848180c21bd.png)
 
@@ -273,20 +243,16 @@ Delivery 서비스에는 H2 DB 대신 HSQL DB를 사용하기로 하였다. 이�
 
 ## 동기식 호출 과 Fallback 처리
 
-분석단계에서의 조건 중 하나로 주문(Order)->결제(Payment) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
+분석단계에서의 조건 중 하나로 주문(Order)->결제(Payment) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
+호출 프로토콜은 이미 앞서 Rest Repository 에 의해 노출되어 있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다. 
 
-- 결제서비스를 호출하기 위하여 Stub과 (FeignClient) 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
+- 결제서비스를 호출하기 위하여 FeignClient 를 이용하여 Service 대행 인터페이스 (Proxy) 를 구현 
 
 ```
 # (Order) PaymentService.java
 
 
 package bookmarket.external;
-
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
@@ -320,24 +286,24 @@ public interface PaymentService {
     }
 ```
 
-- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인:
+- 동기식 호출에서는 호출 시간에 따른 타임 커플링이 발생하며, 결제 시스템이 장애가 나면 주문도 못받는다는 것을 확인 (비기능 요구사항 1):
 
 
 ```
 # 결제 (Payment) 서비스를 잠시 내려놓음 (ctrl+c)
 
-#주문처리
+# 주문처리
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Fail
 
 ```
 ![image](https://user-images.githubusercontent.com/70673830/98119212-a89fe400-1eef-11eb-8b8e-196a219b0f38.png)
 
 ```
-#결제서비스 재기동
+# 결제서비스 재기동
 cd Payment
 mvn spring-boot:run
 
-#주문처리
+# 주문처리
 http localhost:8081/orders bookId=1 qty=1 customerId=1001   #Success
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Success
 ```
@@ -352,7 +318,7 @@ http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Success
 ## 비동기식 호출 / 시간적 디커플링 / 장애격리 / 최종 (Eventual) 일관성 테스트
 
 
-결제가 이루어진 후에 배송서비스로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리하여 배송서비스의 처리를 위하여 결제주문이 블로킹 되지 않아도록 처리한다.
+결제가 이루어진 후에 배송서비스로 이를 알려주는 행위는 동기식이 아니라 비 동기식으로 처리하여 배송서비스의 처리를 위하여 결제주문이 블로킹 되지 않도록 처리한다.
  
 - 이를 위하여 결제이력에 기록을 남긴 후에 곧바로 결제승인이 되었다는 도메인 이벤트를 카프카로 송출한다(Publish)
  
@@ -424,22 +390,22 @@ public class PolicyHandler{
 
 # 배송서비스 (Delivery) 를 잠시 내려놓음 (ctrl+c)
 
-#주문처리
+# 주문처리
 http localhost:8081/orders bookId=2 qty=1 customerId=1002   #Success
 ```
 ![image](https://user-images.githubusercontent.com/70673830/98119447-f7e61480-1eef-11eb-958b-4faf1dee47b1.png)
 ```
-#주문상태 확인
+# 주문상태 확인
 http localhost:8081/orders     # 주문상태 안바뀜 확인
 ```
 ![image](https://user-images.githubusercontent.com/70673830/98119540-121ff280-1ef0-11eb-93fc-5982582757c2.png)
 
 ```
-#배송 서비스 기동
+# 배송 서비스 기동
 cd Delivery
 mvn spring-boot:run
 
-#주문상태 확인
+# 주문상태 확인
 http localhost:8081/orders     # 주문의 상태가 "shipped"으로 확인
 ```
 ![image](https://user-images.githubusercontent.com/70673830/98119616-3380de80-1ef0-11eb-8760-64d746230321.png)
@@ -458,81 +424,152 @@ gateway 프로젝트 내 application.yml
 
 ![image](https://user-images.githubusercontent.com/70673830/98119815-7a6ed400-1ef0-11eb-9576-028614349553.png)
 
+
 # 운영
 
 ## CI/CD 설정
 
+각 구현체들은 각자의 source repository 에 구성되었고, Azure Pipelines 으로 CI/CD 를 구성하였으며, 구성은 아래와 같다. 
+Github 소스 변경이 감지되면, CI 후 trigger 에 의해 CD까지 자동으로 이루어진다.
 
-각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 GCP를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
+- CI 
+![image](https://user-images.githubusercontent.com/70673849/98183815-53de8680-1f4c-11eb-913b-e84d48db0e74.png)
 
+- CD
+![image](https://user-images.githubusercontent.com/70673849/98183996-af107900-1f4c-11eb-98c2-a3bd4c1b69e6.png)
 
 ## Circuit Breaker 점검
 
-시나리오는 주문(Order)-->결제(Payment) 시의 연결을 RESTful Request/Response 로 연동하여 구현이 되어있고, 결제 요청에 orderId가 미존재 시 "circuitBreaker.requestVolumeThreshold"의 옵션을 통한 n개 이상 결제 요청 시 CB 를 통하여 장애격리.
+시나리오는 주문(Order)시의 연결을 RESTful Request/Response 로 연동하여 구현이 되어있고, 과도한 주문 요청 시 "circuitBreaker.requestVolumeThreshold"의 옵션을 통한 장애격리 구현.
 
 ```
-Hystrix Command
-	5000ms 이상 Timeout 발생 시 CircuitBearker 발동
-
-CircuitBeaker 발생
-	http http://localhost:8080/selectPaymentInfo?orderId=0
-		- 잘못된 쿼리 수행 시 CircuitBeaker
-		- 10000ms(10sec) Sleep 수행
-		- 5000ms Timeout으로 CircuitBeaker 발동
-		- 10000ms(10sec) 
-    - 1건 이상 발생 시 발동
+Hystrix 를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
+# application.yml
+feign:
+  hystrix:
+    enabled: true
+    
+hystrix:
+  command:
+    # 전역설정
+    default:
+      execution.isolation.thread.timeoutInMilliseconds: 610
 ```
-
-![image](https://user-images.githubusercontent.com/70673830/98113539-28758080-1ee7-11eb-8b34-dab272e9f122.png)
-#### 소스 코드
 ```
-# PaymentController.java
- @GetMapping("/selectPaymentInfo")
- @HystrixCommand(fallbackMethod = "fallbackPayment", commandProperties = {
-         @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "5000"),
-         @HystrixProperty(name = "metrics.rollingStats.timeInMilliseconds", value = "10000"),
-         @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "10"),
-         @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "1"),
-         @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "10000")
- })
- public String selectPaymentInfo(@RequestParam long orderId) throws InterruptedException {
+호출 서비스(주문:order) 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다 갔다 하게
+# Order.java (Entity)
 
-  if (orderId <= 0) {
-   Thread.sleep(10000);
-  } else {
-   Optional<Payment> payment = paymentRepository.findById(orderId);
-   return payment.get().getPaymentStatus();
- }
+    @PrePersist
+    public void onPrePersist(){  // 주문 저장 전 시간 끌기
   
+        try {
+            Thread.currentThread().sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
 ```
-![image](https://user-images.githubusercontent.com/70673830/98113341-ddf40400-1ee6-11eb-8d24-7517b4494d10.png)
 
-- 피호출 서비스(결제:Payment) 의 timeoutInMilliseconds의 5초 이후는 아래의 CD에 격리 처리
+## 부하 발생을 통한 Circuit Breaker 점검
 ```
-# private String fallbackDelivery(long orderId) {
-  return "CircuitBreaker!!!";
- }
+root@siege-5c7c46b788-z8jxc:/# siege -c100 -t120S -v --content-type "application/json" 'http://Order:8080/orders POST {"bookId": "10", "qty": "1", "customerId": "1002"}'
+** SIEGE 4.0.4
+** Preparing 100 concurrent users for battle.
+The server is now under siege...
+HTTP/1.1 201     5.35 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.36 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.35 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.37 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.34 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.44 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.47 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.48 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.49 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     5.50 secs:     226 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.64 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.68 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.78 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.78 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     3.31 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.78 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.80 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.81 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.80 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     8.81 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.84 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.84 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.91 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.93 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.95 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    11.99 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    12.01 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     3.23 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    12.03 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    12.02 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.00 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.03 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201     3.25 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.19 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.21 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.21 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.23 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.23 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.28 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    15.25 secs:     228 bytes ==> POST http://Order:8080/orders
+
+* 과도한 요청으로 CB 작동 -> 요청 차단
+
+HTTP/1.1 500     2.26 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.29 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.28 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.47 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.22 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.48 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.29 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.30 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.29 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     2.27 secs:     248 bytes ==> POST http://Order:8080/orders
+
+* 요청을 어느 정도 차단 후, 기존에 밀린 일들이 처리되었고, 회로를 닫아 요청 처리
+
+HTTP/1.1 201    18.05 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    18.05 secs:     228 bytes ==> POST http://Order:8080/orders
+
+* 다시 요청이 쌓이기 시작하여 건당 처리시간 부하 => 회로 열기 => 요청 실패처리
+
+HTTP/1.1 500     0.66 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     0.75 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     0.77 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     0.76 secs:     248 bytes ==> POST http://Order:8080/orders
+
+* 요청을 어느 정도 차단 후, 기존에 밀린 일들이 처리되었고, 회로를 닫아 요청 처리
+
+HTTP/1.1 201    18.25 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    18.31 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    18.32 secs:     228 bytes ==> POST http://Order:8080/orders
+
+HTTP/1.1 500     0.82 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     0.83 secs:     248 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 500     0.84 secs:     248 bytes ==> POST http://Order:8080/orders
+
+* 건당 (쓰레드당) 처리시간이 610 밀리 미만으로 회복 -> 요청 수락
+
+HTTP/1.1 201    18.35 secs:     228 bytes ==> POST http://Order:8080/orders
+HTTP/1.1 201    18.35 secs:     228 bytes ==> POST http://Order:8080/orders
+
 ```
-#### 실행 결과
-![image](https://user-images.githubusercontent.com/70673830/98113470-0e3ba280-1ee7-11eb-8830-7c82b27ce0ba.png)
-
-* 결제가 이루어 지지 않은 비정상적인 호출에 대한 CD:
-- 10초 동안 격리 실시
-- 1번 이상 orderId없을 시 격리
-
-
-
 - 운영시스템은 비정상적인 접속 및 과도한 Data 조회에 대한 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 
+하지만 75.5% 가 성공하고 31.4%가 실패했다는 것은 사용성에 있어 좋지 않기 때문에 Retry 설정과 동적 Scale out (replica의 자동적 추가, HPA) 을 통하여 시스템을 확장 해주는 후속처리 필요.
 
 ### 오토스케일 아웃
-앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
-
+Circuite Breaker 는 시스템을 안정되게 운영할 수 있게 해줬지만, 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
 
 - 결제서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 20프로를 넘어서면 replica 를 20개까지 늘려준다:
 ```
 kubectl autoscale deploy payment --cpu-percent=20 --min=1 --max=20 -n books
 ```
-- CB 에서 했던 방식대로 워크로드를 2분 동안 걸어준다.
+- Circuite Breaker 에서 했던 방식대로 워크로드를 2분 동안 걸어준다.
 ```
 siege -c100 -t120S -v --content-type "application/json" 'http://20.196.153.152:8080/orders POST {"bookId": "10", "qty": "1", "customerId":"1002"}'
 ```
@@ -540,7 +577,7 @@ siege -c100 -t120S -v --content-type "application/json" 'http://20.196.153.152:8
 ```
 kubectl get deploy payment -w
 ```
-- 어느정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인할 수 있다:
+- 어느 정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인할 수 있다:
 
 ![image](https://user-images.githubusercontent.com/70673830/98115066-915df800-1ee9-11eb-9ebf-f2d79112bec9.png)
 
@@ -551,45 +588,41 @@ kubectl get deploy payment -w
 
 
 
-
 ## 무정지 재배포
 
 * 먼저 무정지 재배포가 100% 되는 것인지 확인하기 위해서 Autoscaler 이나 CB 설정을 제거함
 
 - seige 로 배포작업 직전에 워크로드를 모니터링 함.
 ```
-siege -c100 -t120S -r10 --content-type "application/json" 'http://localhost:8081/orders POST {"bookId": "10", "qty": "1", "customerId": "1002"}'
+siege -c100 -t120S -r10 --content-type "application/json" 'http://customerview:8080/mypages POST {"orderId": "10", "qty": "1", "customerId": "1002"}'
 
 ** SIEGE 4.0.5
 ** Preparing 100 concurrent users for battle.
 The server is now under siege...
 
-HTTP/1.1 201     0.68 secs:     207 bytes ==> POST http://localhost:8081/orders
-HTTP/1.1 201     0.68 secs:     207 bytes ==> POST http://localhost:8081/orders
-HTTP/1.1 201     0.70 secs:     207 bytes ==> POST http://localhost:8081/orders
-HTTP/1.1 201     0.70 secs:     207 bytes ==> POST http://localhost:8081/orders
+HTTP/1.1 201     0.00 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.01 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.02 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.03 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.00 secs:     269 bytes ==> POST http://customerview:8080/mypages
+HTTP/1.1 201     0.00 secs:     269 bytes ==> POST http://customerview:8080/mypages
 :
 
 ```
 
-- 새버전으로의 배포 시작
-```
-kubectl set image ...
-```
+- 새버전으로 재배포 (Azure DevOps Pipelines)
 
 - seige 의 화면으로 넘어가서 Availability 가 100% 미만으로 떨어졌는지 확인
-```
-Transactions:		        3078 hits
-Availability:		       70.45 %
-Elapsed time:		       120 secs
-Data transferred:	        0.34 MB
-Response time:		        5.60 secs
-Transaction rate:	       17.15 trans/sec
-Throughput:		        0.01 MB/sec
-Concurrency:		       96.02
 
-```
-배포기간중 Availability 가 평소 100%에서 70% 대로 떨어지는 것을 확인. 원인은 쿠버네티스가 성급하게 새로 올려진 서비스를 READY 상태로 인식하여 서비스 유입을 진행한 것이기 때문. 이를 막기위해 Readiness Probe 를 설정함:
+![image](https://user-images.githubusercontent.com/20619166/98184054-ca7b8400-1f4c-11eb-95ad-2949072ff912.png)
+
+
+배포기간중 Availability 가 평소 100%에서 90% 로 떨어지는 것을 확인. 원인은 쿠버네티스가 성급하게 새로 올려진 서비스를 READY 상태로 인식하여 서비스 유입을 진행한 것이기 때문. 이를 막기위해 Readiness Probe 를 설정함:
 
 ```
 # deployment.yaml 의 readiness probe 의 설정:
@@ -599,21 +632,20 @@ kubectl apply -f kubernetes/deployment.yaml
 ```
 
 - 동일한 시나리오로 재배포 한 후 Availability 확인:
-```
-Transactions:		        3078 hits
-Availability:		       100 %
-Elapsed time:		       120 secs
-Data transferred:	        0.34 MB
-Response time:		        5.60 secs
-Transaction rate:	       17.15 trans/sec
-Throughput:		        0.01 MB/sec
-Concurrency:		       96.02
 
-```
+![image](https://user-images.githubusercontent.com/20619166/98185439-fb10ed00-1f4f-11eb-8278-ae03158414fd.png)
 
 배포기간 동안 Availability 가 변화없기 때문에 무정지 재배포가 성공한 것으로 확인됨.
 
+
+
 ## Liveness Probe 점검
+
+### 시나리오 1. 파일 상태 점검
+
+5초 간격으로 특정 위치의 파일 생성 여부를 확인하고, 없으면 실패로 인식해서 프로세스를 Kill하고 다시 시작,
+일정 시간 (30초)가 지나면 다시 파일을 삭제하고 Liveness 를 위한 서비스 수행한다.
+
 ### 설정 확인
 ```
 apiVersion: v1
@@ -680,6 +712,13 @@ kubectl describe po goproxy
 ```
 ![image](https://user-images.githubusercontent.com/70673830/98134412-148b4800-1f02-11eb-9189-f38c401c0eb8.png)
 
+### 시나리오 2. TCP 포트 점검
+
+Order서비스의 deployment.yml의 liveness 설정을 tcp socket 방식의 8081 포트를 바라보도록 변경하여 restart여부를 확인한다.
+
+![image](https://user-images.githubusercontent.com/20619166/98126463-f8cf7400-1ef8-11eb-9246-89f425031a86.png)
+![image](https://user-images.githubusercontent.com/20619166/98126483-fd942800-1ef8-11eb-99d9-89481b2c62e4.png)
+![image](https://user-images.githubusercontent.com/20619166/98126511-0553cc80-1ef9-11eb-9a56-b564c70466d4.png)
 
 ## Config Map
 ```
