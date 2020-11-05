@@ -794,6 +794,7 @@ transfer-encoding: chunked
 ## 헥사고날 아키텍처 변화 
 ![image](https://user-images.githubusercontent.com/70673830/98195160-6664ba00-1f64-11eb-8415-e2487743b1d5.png)
 
+
 ## 추가 서비스 정상 기동
 ```
 * Httpie Pod 접속
@@ -877,12 +878,15 @@ Transfer-Encoding: chunked
     "orderId": 1,
     "status": "Shipped"
 ```
+## CI/CD 점검
+![image](https://user-images.githubusercontent.com/70673830/98233337-405e0a80-1fa2-11eb-977b-577920b03a21.png)
+![image](https://user-images.githubusercontent.com/70673830/98233383-51a71700-1fa2-11eb-9af9-630338761118.png)
 
 ## 배송 상태 Book Message 확인
 ```
 {"eventType":"MessageSended","timestamp":"20201105114418","id":null,"deliveryId":1,"bookMessage":"Book Delivery Status Changed : Shipped","deliveryStatus":"Shipped","me":true}
-
 ```
+
 ## Circuit Breaker 점검
 ```
 Hystrix Command
