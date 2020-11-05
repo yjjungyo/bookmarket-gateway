@@ -782,3 +782,35 @@ transfer-encoding: chunked
 
 ```
 # 신규배송알람
+
+## 이벤트 스토밍 
+```
+이벤트 스토밍 이미지 넣자
+```
+## 신규 배송 알림
+    - KPI: 배송 상태 및 취소 상태 실시간 체크
+    - 팀 과제의 Bookmarket에 주문ID 및 Status를 통한 각 사용자 별 Message 수신
+    
+## 헥사고날 아키텍처 변화 
+![image](https://user-images.githubusercontent.com/70673830/98195160-6664ba00-1f64-11eb-8415-e2487743b1d5.png)
+
+## 추가 서비스 정상 기동
+```
+* Httpie Pod 접속
+kubectl exec -it httpie -- bash
+
+http http://gateway:8080/bookAlarms
+```
+
+## Kafka 기동 및 모니터링 용 Consumer 연결
+```
+kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootstrap-server my-kafka:9092 --topic bookmarket --from-beginning
+```
+
+## 책 주문 생성
+```
+
+```
+
+## 배송 상태 Book Message 확인
+
