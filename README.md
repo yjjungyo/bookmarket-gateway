@@ -784,9 +784,8 @@ transfer-encoding: chunked
 # 신규배송알람
 
 ## 이벤트 스토밍 
-```
-이벤트 스토밍 이미지 넣자
-```
+![image](https://user-images.githubusercontent.com/70673830/98245081-bcad1980-1fb3-11eb-8f63-fdda45462788.png)
+
 ## 신규 배송 알림
     - KPI: 배송 상태 및 취소 상태 실시간 체크
     - 팀 과제의 Bookmarket에 주문ID 및 Status를 통한 각 사용자 별 Message 수신
