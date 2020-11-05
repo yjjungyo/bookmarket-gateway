@@ -1,0 +1,99 @@
+
+0_load.sh 
+siege -c100 -t120S -r10 --content-type "application/json" 'http://40.82.137.21:8080/orders POST {"bookId": "10", "qty": "1", "customerId": "1002"}'
+
+=============================================================================================================================================================
+
+1_dockerising.sh  
+
+cd Order
+mvn package
+docker build -t admin31.azurecr.io/order:V1 .
+docker push admin31.azurecr.io/order:V1
+cd ..
+cd Payment
+mvn package
+docker build -t admin31.azurecr.io/payment:V1 .
+docker push admin31.azurecr.io/payment:V1
+cd ..
+cd Delivery
+mvn package
+docker build -t admin31.azurecr.io/delivery:V1 .
+docker push admin31.azurecr.io/delivery:V1
+cd ..
+cd customerview
+mvn package
+docker build -t admin31.azurecr.io/customerview:V1 .
+docker push admin31.azurecr.io/customerview:V1
+cd ..
+cd gateway
+mvn package
+docker build -t admin31.azurecr.io/gateway:V1 .
+docker push admin31.azurecr.io/gateway:V1
+cd ..
+docker images
+
+
+=============================================================================================================================================================
+
+2_kube_crt_deploy.sh  
+
+
+kubectl create deploy order --image=admin31.azurecr.io/order:V1 -n books
+kubectl create deploy payment --image=admin31.azurecr.io/payment:V1 -n books
+kubectl create deploy delivery --image=admin31.azurecr.io/delivery:V1 -n books
+kubectl create deploy customerview --image=admin31.azurecr.io/customerview:V1 -n books
+kubectl create deploy bookAlarm --image=admin31.azurecr.io/bookalarm:V1 -n books
+kubectl create deploy gateway --image=admin31.azurecr.io/gateway:V1 -n books
+
+kubectl get all -n books
+
+=============================================================================================================================================================
+
+3_kube_exp_deploy.sh  
+
+
+kubectl expose deploy order --type=ClusterIP --port=8080 -n books
+kubectl expose deploy payment --type=ClusterIP --port=8080 -n books
+kubectl expose deploy delivery --type=ClusterIP --port=8080 -n books
+kubectl expose deploy customerview --type=ClusterIP --port=8080 -n books
+kubectl expose deploy bookalarm --type=ClusterIP --port=8080 -n books
+kubectl expose deploy gateway --type=LoadBalancer --port=8080 -n books
+
+kubectl get all -n books
+
+=============================================================================================================================================================
+
+4_service_check.sh 
+
+
+http http://Order:8080/orders
+http http://Payment:8080/payments
+http http://Delivery:8080/deliveries
+http http://customerview:8080/mypages
+http http://bookalarm:8080/bookalarms
+
+=============================================================================================================================================================
+
+5_kafka_check.sh
+
+kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootstrap-server my-kafka:9092 --topic bookmarket --from-beginning
+
+=============================================================================================================================================================
+
+6_autoscale.sh 
+
+kubectl autoscale deploy order --min=1 --max=10 --cpu-percent=5 -n books
+kubectl autoscale deploy payment --min=1 --max=10 --cpu-percent=5 -n books
+
+kubectl get deploy order -w -n books
+
+#kubectl delete hpa order -n books
+
+
+=============================================================================================================================================================
+admin31@gkn2019hotmail.onmicrosoft.com	
+Skcc!234!
+
+
+123$
