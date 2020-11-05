@@ -23,6 +23,7 @@
     - [무정지 재배포](#무정지-재배포)
     - [Liveness](#Liveness)
     - [Config Map](#Config-Map)
+   - [신규배송알람](#신규배송알람)
 
 # 서비스 시나리오
 
@@ -780,3 +781,4 @@ transfer-encoding: chunked
 }
 
 ```
+# 신규배송알람
