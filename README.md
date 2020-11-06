@@ -803,6 +803,11 @@ gateway 프로젝트 내 application.yml 에 추가로 구성
 
 ![image](https://user-images.githubusercontent.com/70673830/98318472-046a8a00-2022-11eb-8a6d-ddb46d76af0d.png)
 
+## 폴리글랏 퍼시스턴스
+bookMessage 서비스에는 H2 DB 대신 HSQLDB를 사용하기로 하였다. 이를 위해 메이븐 설정(pom.xml)상 DB 정보를 HSQLDB를 사용하도록 변경하였다.
+
+![image](https://user-images.githubusercontent.com/70673830/98321420-6201d500-2028-11eb-9321-ea74966a4d84.png)
+
 
 ## Kafka 기동 및 모니터링 용 Consumer 연결
 ```
