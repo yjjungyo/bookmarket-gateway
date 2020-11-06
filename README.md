@@ -807,21 +807,40 @@ http http://gateway:8080/bookAlarms
 kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootstrap-server my-kafka:9092 --topic bookmarket --from-beginning
 ```
 
-## 책 주문 생성
+### 책 주문 생성
 ![image](https://user-images.githubusercontent.com/70673830/98305636-9a43ec00-2005-11eb-8af2-9061a422f24b.png)
 
-## 결재 상태 확인
+### 결재 상태 확인
 ![image](https://user-images.githubusercontent.com/70673830/98305714-c0698c00-2005-11eb-82c4-7a744b9fd96b.png)
 
-## 배송 상태 확인
+### 배송 상태 확인
 ![image](https://user-images.githubusercontent.com/70673830/98305776-db3c0080-2005-11eb-9675-871d7960faa8.png)
 
-## CI/CD 점검
+### CI/CD 점검
 ![image](https://user-images.githubusercontent.com/70673830/98233337-405e0a80-1fa2-11eb-977b-577920b03a21.png)
 ![image](https://user-images.githubusercontent.com/70673830/98233383-51a71700-1fa2-11eb-9af9-630338761118.png)
 
-## 배송 상태 Book Message 확인 Monitoring
+### 배송 상태 Book Message 확인 Monitoring
 ![image](https://user-images.githubusercontent.com/70673830/98305857-fad32900-2005-11eb-96b8-42b33f33ecb5.png)
+
+
+## 오토스케일 아웃
+- 결제서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 20프로를 넘어서면 replica 를 20개까지 늘려준다:
+![image](https://user-images.githubusercontent.com/70673830/98315204-0e3cbf00-201b-11eb-9f9d-d76a9214743a.png)
+
+- Circuite Breaker 에서 했던 방식대로 워크로드를 2분 동안 걸어준다.
+```
+siege -c100 -t120S -v --content-type "application/json" 'http://20.196.153.152:8080/orders POST {"bookId": "10", "qty": "1", "customerId":"1002"}'
+```
+![image](https://user-images.githubusercontent.com/70673830/98315297-3debc700-201b-11eb-8a6e-b74395eade27.png)
+
+- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
+```
+kubectl get deploy payment -w
+```
+![image](https://user-images.githubusercontent.com/70673830/98315692-1fd29680-201c-11eb-840b-f97ea6e8238d.png)
+
+- 어느 정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인.
 
 
 ## Circuit Breaker 점검
