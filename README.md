@@ -793,6 +793,13 @@ transfer-encoding: chunked
 ## 헥사고날 아키텍처 변화 
 ![image](https://user-images.githubusercontent.com/70673830/98195160-6664ba00-1f64-11eb-8415-e2487743b1d5.png)
 
+##CQRS
+customerview(mypage)에 추가로 통해 구현하였다.
+![image](https://user-images.githubusercontent.com/70673830/98318185-6f679100-2021-11eb-8ca6-f3990f870b7c.png)
+
+##gateway
+gateway 프로젝트 내 application.yml 에 추가로 구성
+![image](https://user-images.githubusercontent.com/70673830/98318472-046a8a00-2022-11eb-8a6d-ddb46d76af0d.png)
 
 ## 추가 서비스 정상 기동
 ```
