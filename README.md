@@ -803,13 +803,6 @@ gateway 프로젝트 내 application.yml 에 추가로 구성
 
 ![image](https://user-images.githubusercontent.com/70673830/98318472-046a8a00-2022-11eb-8a6d-ddb46d76af0d.png)
 
-## 추가 서비스 정상 기동
-```
-* Httpie Pod 접속
-kubectl exec -it httpie -- bash
-
-http http://gateway:8080/bookAlarms
-```
 
 ## Kafka 기동 및 모니터링 용 Consumer 연결
 ```
