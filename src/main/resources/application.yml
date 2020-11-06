@@ -25,7 +25,7 @@ spring:
           predicates:
             - Path=/mypages/**
         - id: bookalarm
-          uri: http://localhost:8086
+          uri: http://localhost:9999
           predicates:
             - Path=/bookalarms/**
       globalcors:
