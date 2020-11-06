@@ -42,9 +42,10 @@ kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootst
 ### 배송 상태 확인
 ![image](https://user-images.githubusercontent.com/70673830/98305776-db3c0080-2005-11eb-9675-871d7960faa8.png)
 
-### CI/CD 점검
-![image](https://user-images.githubusercontent.com/70673830/98233337-405e0a80-1fa2-11eb-977b-577920b03a21.png)
-![image](https://user-images.githubusercontent.com/70673830/98233383-51a71700-1fa2-11eb-9af9-630338761118.png)
+### CI/CD Pipelines 구성
+![image](https://user-images.githubusercontent.com/24926691/98331086-258da380-203f-11eb-879e-cdcf7bb81958.png)
+
+![image](https://user-images.githubusercontent.com/24926691/98331168-5a015f80-203f-11eb-97e9-f46b0b1c1d56.png)
 
 ### 배송 상태 Book Message 확인 Monitoring
 ![image](https://user-images.githubusercontent.com/70673830/98305857-fad32900-2005-11eb-96b8-42b33f33ecb5.png)
