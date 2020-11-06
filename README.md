@@ -3,7 +3,7 @@
 # 신규배송상태알람
 
 ## 이벤트 스토밍 
-![image](https://user-images.githubusercontent.com/70673830/98245081-bcad1980-1fb3-11eb-8f63-fdda45462788.png)
+![image](https://user-images.githubusercontent.com/24926691/98333718-b450ef00-2044-11eb-8ed4-cc15ff1d3953.png)
 
 ## 신규 배송 알림
     - KPI: 배송 상태 및 취소 상태 실시간 체크
